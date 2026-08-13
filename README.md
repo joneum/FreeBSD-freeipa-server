@@ -129,7 +129,14 @@ repository (include FreeBSD version, `uname -a`, and the relevant
    service freeipa_server start      # start | stop | status
    ```
 
-5. **On cloud-init images**, stop cloud-init from rewriting `/etc/hosts` on
+5. **Reach the Web UI.** Once the stack is up, the FreeIPA Web UI is at
+   `https://ipa.example.com/` — log in as `admin` with the password you set
+   during `ipa-server-install`. For Kerberos single sign-on your browser
+   must trust the IPA CA (`https://ipa.example.com/ipa/config/ca.crt`) and
+   have Negotiate/GSSAPI enabled; otherwise the UI falls back to form-based
+   login.
+
+6. **On cloud-init images**, stop cloud-init from rewriting `/etc/hosts` on
    every boot (it would drop the FQDN → real-IP line):
 
    ```sh
