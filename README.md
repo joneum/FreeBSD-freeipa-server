@@ -162,17 +162,34 @@ self-contained.
 Both ports depend on other ports; most are already in the FreeBSD ports
 tree, a few FreeIPA-related ones are being added/updated in parallel (e.g.
 `net/slapi-nis`, `sysutils/oddjob`, `www/freeipa-auth-gssapi`). Use a
-**current ports tree** and drop these ports in on top:
+**current ports tree** and drop these two ports in on top.
+
+The repository mirrors the ports-tree layout (`net/freeipa-server`,
+`net/freeipa-client`), so you can clone it and copy the two directories
+straight into your tree:
 
 ```sh
-# in a ports tree checkout (or /usr/ports)
-cp -R net/freeipa-server net/freeipa-client /path/to/ports/net/
+# 1. clone this repo somewhere temporary
+git clone https://github.com/joneum/FreeBSD-freeipa-server.git /tmp/ipa-cft
 
-# build + package with poudriere (recommended), with the required option:
-#   security_cyrus-sasl2-gssapi_SET=GSSAPI_MIT
-#   security_cyrus-sasl2-gssapi_UNSET=GSSAPI_BASE
+# 2. copy the two ports into your ports tree
+#    (/usr/ports, or your own checkout / poudriere ports tree)
+cp -R /tmp/ipa-cft/net/freeipa-server \
+      /tmp/ipa-cft/net/freeipa-client /usr/ports/net/
+
+# 3. build + package with poudriere (recommended), with the required option:
+#    security_cyrus-sasl2-gssapi_SET=GSSAPI_MIT
+#    security_cyrus-sasl2-gssapi_UNSET=GSSAPI_BASE
 poudriere testport -j <jail> -p <tree> net/freeipa-server
 poudriere testport -j <jail> -p <tree> net/freeipa-client
+```
+
+To pick up a newer revision later, refresh the clone and copy again:
+
+```sh
+git -C /tmp/ipa-cft pull
+cp -R /tmp/ipa-cft/net/freeipa-server \
+      /tmp/ipa-cft/net/freeipa-client /usr/ports/net/
 ```
 
 ---
