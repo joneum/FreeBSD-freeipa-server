@@ -1,0 +1,4 @@
+# FreeIPA server (net/freeipa-server) service accounts — append to the
+# ports tree's top-level UIDs file (reserved IDs 598 and 606).
+ipaapi:*:598:598::0:0:IPA Framework User:/nonexistent:/usr/sbin/nologin
+kdcproxy:*:606:606::0:0:IPA KDC Proxy User:/nonexistent:/usr/sbin/nologin

@@ -1,0 +1,4 @@
+# FreeIPA server (net/freeipa-server) service groups — append to the
+# ports tree's top-level GIDs file (reserved IDs 598 and 606).
+ipaapi:*:598:www
+kdcproxy:*:606:

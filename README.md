@@ -234,12 +234,50 @@ git clone https://github.com/joneum/FreeBSD-freeipa-server.git /tmp/ipa-cft
 cp -R /tmp/ipa-cft/net/freeipa-server \
       /tmp/ipa-cft/net/freeipa-client /usr/ports/net/
 
-# 3. build + package with poudriere (recommended), with the required option:
+# 3. register the ports in the tree (see "Tree integration" below):
+#    add "SUBDIR += freeipa-server" to /usr/ports/net/Makefile, and append
+#    the freeipa-server service accounts to the tree's UIDs / GIDs files:
+cat /tmp/ipa-cft/tree-integration/UIDs >> /usr/ports/UIDs
+cat /tmp/ipa-cft/tree-integration/GIDs >> /usr/ports/GIDs
+
+# 4. build + package with poudriere (recommended), with the required option:
 #    security_cyrus-sasl2-gssapi_SET=GSSAPI_MIT
 #    security_cyrus-sasl2-gssapi_UNSET=GSSAPI_BASE
 poudriere testport -j <jail> -p <tree> net/freeipa-server
 poudriere testport -j <jail> -p <tree> net/freeipa-client
 ```
+
+### Tree integration (SUBDIR, UIDs, GIDs)
+
+Two things live **outside** the port directories, so copying `net/…` alone
+is not enough — the official ports tree will carry them once the ports are
+committed, but for the CFT you add them by hand:
+
+**1. `net/Makefile` SUBDIR entry.** `net/freeipa-client` is already in the
+tree; `net/freeipa-server` is not, so add it (keep the list sorted, right
+after `freeipa-client`):
+
+```make
+SUBDIR += freeipa-server
+```
+
+**2. `UIDs` / `GIDs` service accounts.** `freeipa-server` creates the
+`ipaapi` and `kdcproxy` accounts (`USERS=` / `GROUPS=` in its Makefile);
+their numeric IDs live in the tree-wide `UIDs` and `GIDs` files (reserved
+IDs 598 and 606). This repo ships them under `tree-integration/`:
+
+```
+# UIDs
+ipaapi:*:598:598::0:0:IPA Framework User:/nonexistent:/usr/sbin/nologin
+kdcproxy:*:606:606::0:0:IPA KDC Proxy User:/nonexistent:/usr/sbin/nologin
+
+# GIDs
+ipaapi:*:598:www
+kdcproxy:*:606:
+```
+
+Without these entries the build/package step cannot create the service
+users and fails. (`net/freeipa-client` needs no UIDs/GIDs of its own.)
 
 To pick up a newer revision later, refresh the clone and copy again:
 
