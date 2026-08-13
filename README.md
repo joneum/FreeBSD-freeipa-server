@@ -204,22 +204,13 @@ them (extra detail or fixes are of course welcome):
 
 ## How to use this during the CFT
 
-`freeipa-server` sits on top of a number of other ports that **also carry
-FreeBSD-specific changes for FreeIPA which are not yet in the official ports
-tree**. This repository ships the two FreeIPA ports themselves; the
-companion ports are being submitted/committed progressively:
-
-* **New ports:** `net/slapi-nis`, `sysutils/oddjob`,
-  `www/freeipa-auth-gssapi`.
-* **Existing ports with pending FreeBSD changes:** `net/389-ds-base`,
-  `security/dogtag-pki`, `security/gssproxy`, `net/py-lib389`,
-  `security/sssd2`.
-
-> ⚠️ Until all of these have landed in the tree, a **stock ports tree will
-> not build `freeipa-server` on its own.** For now, build against the
-> maintainer's development ports tree, or contact **joneum@FreeBSD.org** for
-> the current companion-port set. This will resolve itself as the ports are
-> committed.
+Everything `freeipa-server` depends on is now committed to the FreeBSD ports
+tree, including the ports and changes that were added for FreeIPA
+(`net/389-ds-base`, `security/dogtag-pki`, `net/py-lib389`, `net/slapi-nis`,
+`sysutils/oddjob`, `www/freeipa-auth-gssapi`, and others). What you still
+need from this repository is `net/freeipa-server` itself, which is not in the
+tree yet, plus the patched `net/freeipa-client` (see *Client status* above).
+A current ports tree plus these two ports is all you need.
 
 The repository mirrors the ports-tree layout (`net/freeipa-server`,
 `net/freeipa-client`), so you can clone it and copy the two directories
@@ -250,8 +241,8 @@ poudriere testport -j <jail> -p <tree> net/freeipa-client
 ### Tree integration (SUBDIR, UIDs, GIDs)
 
 Two things live **outside** the port directories, so copying `net/…` alone
-is not enough — the official ports tree will carry them once the ports are
-committed, but for the CFT you add them by hand:
+is not enough. The official ports tree will carry them once `freeipa-server`
+is committed, but for the CFT you add them by hand:
 
 **1. `net/Makefile` SUBDIR entry.** `net/freeipa-client` is already in the
 tree; `net/freeipa-server` is not, so add it (keep the list sorted, right
