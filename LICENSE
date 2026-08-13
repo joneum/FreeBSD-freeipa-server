@@ -1,0 +1,31 @@
+LICENSE / NOTICE
+================
+
+This repository packages FreeIPA for FreeBSD (a "Call For Testing" snapshot
+of the net/freeipa-server and net/freeipa-client ports).
+
+FreeIPA software
+----------------
+The FreeIPA software that these ports download, patch and build is licensed
+under the GNU General Public License, version 3 or later (GPLv3+):
+
+    https://www.gnu.org/licenses/gpl-3.0.txt
+
+See the COPYING file shipped in the FreeIPA source distribution
+(https://www.freeipa.org/) for the authoritative license text.
+
+Port files in this repository
+-----------------------------
+The FreeBSD port scaffolding here — Makefiles, distinfo, pkg-descr,
+pkg-plist, pkg-message and the rc/newsyslog helper files — follows the
+FreeBSD Ports Collection convention and is provided under the BSD 2-Clause
+license.
+
+The patches under each port's files/ directory modify GPLv3+ FreeIPA source
+files and are therefore themselves covered by GPLv3+.
+
+No warranty
+-----------
+This is experimental, unreviewed work-in-progress published for testing
+only. It is provided "as is", without warranty of any kind. See the README
+for the (deliberately loud) "not for production use" note.

@@ -182,12 +182,44 @@ self-contained.
 
 ---
 
+## Known issues / limitations
+
+These are **already known** — please don't file separate reports just for
+them (extra detail or fixes are of course welcome):
+
+* **`oddjobd` fails to `onestart`** — the `oddjob-mkhomedir` trigger does not
+  yet work cleanly under the FreeBSD rc system, so a user's home directory
+  may not be created automatically on first login.
+* **No DNS records without integrated DNS** — if you install without
+  IPA-managed DNS, the `A` / `PTR` / `SSHFP` records are not created; manage
+  names via `/etc/hosts` or your own DNS server.
+* **`sssctl` needs a running D-Bus** — ensure `dbus_enable=YES`.
+* **`ipa-getkeytab` run by hand** may print a TLS-context error; the
+  enrolment path used by `ipa-client-install` itself works.
+* **gssproxy S4U2 is unreliable on FreeBSD** — the server therefore uses a
+  direct MIT-krb5 S4U2Self path for the HTTP stack **by design**. gssproxy
+  stays installed and enabled for its credential-store role.
+
+---
+
 ## How to use this during the CFT
 
-Both ports depend on other ports; most are already in the FreeBSD ports
-tree, a few FreeIPA-related ones are being added/updated in parallel (e.g.
-`net/slapi-nis`, `sysutils/oddjob`, `www/freeipa-auth-gssapi`). Use a
-**current ports tree** and drop these two ports in on top.
+`freeipa-server` sits on top of a number of other ports that **also carry
+FreeBSD-specific changes for FreeIPA which are not yet in the official ports
+tree**. This repository ships the two FreeIPA ports themselves; the
+companion ports are being submitted/committed progressively:
+
+* **New ports:** `net/slapi-nis`, `sysutils/oddjob`,
+  `www/freeipa-auth-gssapi`.
+* **Existing ports with pending FreeBSD changes:** `net/389-ds-base`,
+  `security/dogtag-pki`, `security/gssproxy`, `net/py-lib389`,
+  `security/sssd2`.
+
+> ⚠️ Until all of these have landed in the tree, a **stock ports tree will
+> not build `freeipa-server` on its own.** For now, build against the
+> maintainer's development ports tree, or contact **joneum@FreeBSD.org** for
+> the current companion-port set. This will resolve itself as the ports are
+> committed.
 
 The repository mirrors the ports-tree layout (`net/freeipa-server`,
 `net/freeipa-client`), so you can clone it and copy the two directories
@@ -248,4 +280,15 @@ Thank you!
 ## Feedback
 
 Open a GitHub issue here, or contact the maintainer at
-**joneum@FreeBSD.org**. Thank you for testing!
+**joneum@FreeBSD.org**.
+
+When reporting a failure, please attach as much of the following as applies:
+
+* `uname -a` and the FreeBSD / `pkg` version
+* the **poudriere build log** (for build failures)
+* `/var/log/ipaserver-install.log` or `/var/log/ipaclient-install.log`
+* `ipactl status` and `/var/log/httpd-error.log` (runtime / Web-UI issues)
+* a `KRB5_TRACE=/dev/stderr <command>` trace for Kerberos / GSSAPI problems
+* the Dogtag / PKI logs under `/var/log/pki/` (CA issues)
+
+Thank you for testing!
