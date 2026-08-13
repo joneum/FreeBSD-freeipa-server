@@ -21,11 +21,29 @@ Maintainer: **joneum@FreeBSD.org**
 
 ## What to test
 
-* Building both ports (poudriere strongly recommended).
-* `ipa-server-install` on a freshly provisioned host.
-* Enrolling a FreeBSD client and resolving users (`id`, `getent`).
+Please test **as thoroughly and completely as possible** — exercise **every
+option and every feature you can reach**. This CFT is about broad, real-world
+coverage, not just the happy path:
+
+* All `ipa-server-install` options — self-signed vs. external CA
+  (`--external-ca`), with/without integrated DNS, custom realm/domain
+  combinations, non-default subject base, unattended (`-U`) installs, etc.
+* The full `ipa` command surface — users, groups, hosts, host groups, sudo
+  rules, HBAC, RBAC/roles, certificates and cert profiles, OTP tokens,
+  ID views, ID ranges, password policies, DNS records (if enabled), ...
+* Client enrollment **and** un-enrollment; re-enrollment; `id` / `getent` /
+  Kerberos login for IPA users.
+* Replicas / multi-server topologies, if you can set them up.
 * Boot persistence (reboot the server, verify the stack comes back up).
-* Uninstall / reinstall.
+* Uninstall / reinstall, and full decommission.
+* Anything unusual or off the beaten path — that is exactly what needs
+  exercising.
+
+> ⚠️ **Not for production use.** This is experimental, not-yet-reviewed
+> work-in-progress, published for testing only. Do **not** run it as a
+> production identity provider, and do **not** put it on any host or data
+> you care about. Use a dedicated throwaway VM. Breakage, data loss and
+> incompatible changes before the final committed port are expected.
 
 Please report results — **success or failure** — via a GitHub issue on this
 repository (include FreeBSD version, `uname -a`, and the relevant
