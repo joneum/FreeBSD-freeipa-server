@@ -1,102 +1,98 @@
-# Call For Testing — FreeIPA on FreeBSD (`net/freeipa-server` + `net/freeipa-client`)
+# FreeIPA on FreeBSD
 
-This repository contains a **work-in-progress FreeBSD port of FreeIPA**
-(FreeIPA 4.13.1), published for a **Call For Testing (CFT)**. It is **not
-yet committed** to the official FreeBSD ports tree.
+FreeIPA is integrated identity management: 389 Directory Server (LDAP),
+an MIT Kerberos KDC, Dogtag PKI (CA) and an Apache/mod_wsgi management
+stack, combined into a single managed domain.
 
-FreeIPA is integrated identity management: 389 Directory Server (LDAP) +
-MIT Kerberos KDC + Dogtag PKI (CA) + an Apache/mod_wsgi management stack.
+> **`net/freeipa-server` is now committed to the official FreeBSD ports
+> tree.** You no longer need this repository to install the server.
+> See [commit 35e4879](https://cgit.freebsd.org/ports/commit/?id=35e48795412e5aba7dcf12b074b5ffa152aed031).
 
-> **Status.** On FreeBSD 15 (amd64) `ipa-server-install` completes, and a
-> FreeBSD client enrolls with `ipa-client-install` and resolves IPA
-> users/groups (`id`, `getent`) via SSSD — **using the patched
-> `net/freeipa-client` included in this repository**. The client fixes are
-> not yet in the official ports tree (see *Client status* below). All
-> blockers known to the maintainer are fixed here; the CFT should confirm
-> this on other setups.
+The Call For Testing that this repository was created for has served its
+purpose. What remains here:
+
+* the **patched `net/freeipa-client`**, until [Bug 297487](https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=297487) lands
+* the **documentation** below (prerequisites, quick install, known issues)
+* the **issue tracker**, still the central place for FreeIPA-on-FreeBSD reports
 
 Maintainer: **joneum@FreeBSD.org**
 
----
-
-## What to test
-
-Please test **as thoroughly and completely as possible** — exercise **every
-option and every feature you can reach**. This CFT is about broad, real-world
-coverage, not just the happy path:
-
-* All `ipa-server-install` options — self-signed vs. external CA
-  (`--external-ca`), with/without integrated DNS, custom realm/domain
-  combinations, non-default subject base, unattended (`-U`) installs, etc.
-* The full `ipa` command surface — users, groups, hosts, host groups, sudo
-  rules, HBAC, RBAC/roles, certificates and cert profiles, OTP tokens,
-  ID views, ID ranges, password policies, DNS records (if enabled), ...
-* Client enrollment **and** un-enrollment; re-enrollment; `id` / `getent` /
-  Kerberos login for IPA users.
-* Replicas / multi-server topologies, if you can set them up.
-* Boot persistence (reboot the server, verify the stack comes back up).
-* Uninstall / reinstall, and full decommission.
-* Anything unusual or off the beaten path — that is exactly what needs
-  exercising.
-
-> ⚠️ **Not for production use.** This is experimental, not-yet-reviewed
-> work-in-progress, published for testing only. Do **not** run it as a
-> production identity provider, and do **not** put it on any host or data
-> you care about. Use a dedicated throwaway VM. Breakage, data loss and
-> incompatible changes before the final committed port are expected.
-
-Please report results — **success or failure** — via a GitHub issue on this
-repository (include FreeBSD version, `uname -a`, and the relevant
-`ipaserver-install.log` / poudriere build log on failure).
+> ⚠️ **Still not recommended for production.** The port is young and the
+> FreeBSD integration has not seen wide real-world use yet. Use a dedicated
+> VM, not your company login server.
 
 ---
 
 ## Prerequisites (read this first)
 
-1. **Build `security/cyrus-sasl2-gssapi` with the `GSSAPI_MIT` option**
-   (not the default `GSSAPI_BASE`), so the SASL/GSSAPI plugin links the
-   ports MIT Kerberos (`security/krb5`) instead of base-system Kerberos.
-   In poudriere / `make.conf`:
+### 1. Two ports must be built with `GSSAPI_MIT`
 
-   ```
-   security_cyrus-sasl2-gssapi_SET=GSSAPI_MIT
-   security_cyrus-sasl2-gssapi_UNSET=GSSAPI_BASE
-   ```
+FreeIPA on FreeBSD runs on the **MIT Kerberos from ports**
+(`security/krb5`). Two ports default to `GSSAPI_BASE`, which links the
+**base-system** Kerberos instead. Mixing both Kerberos implementations is
+what causes the classic late-stage failures, so build these with
+`GSSAPI_MIT`:
 
-   Otherwise `ipa-server-install` runs to the very end and then fails with
-   `SPNEGO cannot find mechanisms to negotiate` / `Cannot find KDC for
-   realm`. This is a **system-wide** choice — test on a host dedicated to
-   FreeIPA, ideally a throwaway VM.
+```
+security_cyrus-sasl2-gssapi_SET=GSSAPI_MIT
+security_cyrus-sasl2-gssapi_UNSET=GSSAPI_BASE
+security_py-gssapi_SET=GSSAPI_MIT
+security_py-gssapi_UNSET=GSSAPI_BASE
+```
 
-2. **Host naming.** The system hostname must be a fully-qualified domain
-   name that resolves to the host's **real** IP (not loopback) and is the
-   canonical name in `/etc/hosts`:
+Put that in `make.conf` (ports or poudriere), or select the option
+interactively:
 
-   ```sh
-   sysrc hostname="ipa.example.com"
-   hostname ipa.example.com
-   ```
+```sh
+make -C /usr/ports/security/cyrus-sasl2-gssapi config
+make -C /usr/ports/security/py-gssapi config
+```
 
-   ```
-   # /etc/hosts
-   ::1         localhost
-   127.0.0.1   localhost
-   10.0.0.10   ipa.example.com ipa
-   ```
+Without this, `ipa-server-install` runs all the way through and then fails
+right at the end with `SPNEGO cannot find mechanisms to negotiate` or
+`Cannot find KDC for realm`. Verify afterwards (both must point into
+`/usr/local`, never `/usr/lib`):
+
+```sh
+ldd /usr/local/lib/sasl2/libgssapiv2.so | grep libgssapi_krb5
+ldd /usr/local/lib/python3*/site-packages/gssapi/raw/misc*.so | grep libgssapi_krb5
+```
+
+This is a system-wide choice. Every SASL/GSSAPI consumer on the host
+(SSSD, OpenLDAP, Postfix) then uses the ports MIT Kerberos, which is the
+correct, consistent setup on a machine dedicated to FreeIPA.
+
+### 2. Host naming
+
+The system hostname must be a fully-qualified domain name that resolves to
+the host's **real** IP (not loopback), and it must be the canonical name in
+`/etc/hosts`:
+
+```sh
+sysrc hostname="ipa.example.com"
+hostname ipa.example.com
+```
+
+```
+# /etc/hosts
+::1         localhost
+127.0.0.1   localhost
+10.0.0.10   ipa.example.com ipa
+```
 
 ---
 
-## Quick install — server
+## Quick install: server
 
-1. **Install the package** (built from this repo's ports):
+1. **Install it** from the ports tree or as a package:
 
    ```sh
    pkg install freeipa-server
    ```
 
-2. **Enable the required services in `rc.conf`.** Three switches are needed
-   — the FreeIPA stack itself, plus D-Bus and gssproxy (without the latter
-   two the server does not survive a reboot):
+2. **Enable the required services in `rc.conf`.** Three switches, the
+   FreeIPA stack itself plus D-Bus and gssproxy (without the latter two the
+   server does not survive a reboot):
 
    ```sh
    sysrc freeipa_server_enable=YES   # the whole stack, driven by ipactl
@@ -105,11 +101,11 @@ repository (include FreeBSD version, `uname -a`, and the relevant
    ```
 
    You do **not** enable the individual back-ends (389-ds, KDC, Dogtag,
-   httpd) in `rc.conf`; `ipactl` starts them in the correct order.
+   httpd) in `rc.conf`. `ipactl` starts them in the correct order.
 
-3. **Configure the instance** (interactive; `--no-host-dns` skips DNS
-   pre-checks when you manage names via `/etc/hosts`, `--no-ntp` skips the
-   chrony client which is not used on FreeBSD):
+3. **Configure the instance.** `--no-host-dns` skips DNS pre-checks when you
+   manage names via `/etc/hosts`, `--no-ntp` skips the chrony client which is
+   not used on FreeBSD:
 
    ```sh
    ipa-server-install \
@@ -120,41 +116,53 @@ repository (include FreeBSD version, `uname -a`, and the relevant
        --no-ntp
    ```
 
-   This creates and configures 389-ds, the KDC, the Dogtag CA, httpd and
-   the helper services.
-
-4. **Start / manage the server:**
+4. **Start and manage the server:**
 
    ```sh
    service freeipa_server start      # start | stop | status
    ```
 
-5. **Reach the Web UI.** Once the stack is up, the FreeIPA Web UI is at
-   `https://ipa.example.com/` — log in as `admin` with the password you set
-   during `ipa-server-install`. For Kerberos single sign-on your browser
-   must trust the IPA CA (`https://ipa.example.com/ipa/config/ca.crt`) and
-   have Negotiate/GSSAPI enabled; otherwise the UI falls back to form-based
-   login.
+5. **Reach the Web UI** at `https://ipa.example.com/` and log in as `admin`
+   with the password you set during `ipa-server-install`. For Kerberos
+   single sign-on your browser must trust the IPA CA
+   (`https://ipa.example.com/ipa/config/ca.crt`) and have Negotiate/GSSAPI
+   enabled, otherwise the UI falls back to form-based login.
 
 6. **On cloud-init images**, stop cloud-init from rewriting `/etc/hosts` on
-   every boot (it would drop the FQDN → real-IP line):
+   every boot (it would drop the FQDN to real-IP line):
 
    ```sh
    printf 'manage_etc_hosts: false\n' \
        > /usr/local/etc/cloud/cloud.cfg.d/99-ipa-no-manage-hosts.cfg
    ```
 
-Full operator documentation (service map, uninstall, troubleshooting) is in
-`net/freeipa-server/files/README.md`, installed as
-`/usr/local/share/doc/freeipa-server/README.md`.
+Full operator documentation (service map, uninstall, troubleshooting) ships
+with the port as `/usr/local/share/doc/freeipa-server/README.md`.
 
 ---
 
-## Quick install — client (FreeBSD host joining the realm)
+## Quick install: client
+
+The client in the official tree does **not** work yet. It lacks the
+FreeBSD-specific fixes (getkeytab path, `nsswitch.conf` SSS integration,
+platform paths), which are pending review in
+[Bug 297487](https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=297487).
+
+Until that PR lands, use the patched `net/freeipa-client` from this
+repository (it is the exact tree from that PR):
 
 ```sh
-pkg install freeipa-client
+# clone and copy the client port into your ports tree
+git clone https://github.com/joneum/FreeBSD-freeipa-server.git /tmp/ipa-cft
+cp -R /tmp/ipa-cft/net/freeipa-client /usr/ports/net/
 
+# build it (poudriere recommended)
+poudriere testport -j <jail> -p <tree> net/freeipa-client
+```
+
+Then enroll the host:
+
+```sh
 ipa-client-install \
     --domain=example.com \
     --server=ipa.example.com \
@@ -162,141 +170,76 @@ ipa-client-install \
 ```
 
 After enrollment, `id admin` and `getent passwd admin` resolve IPA users
-via SSSD.
+via SSSD. `net/freeipa-client` is not maintained by the FreeIPA porter, it
+is included here only so that a full server plus client setup can be tested
+today.
 
 ---
 
-## Client status — `net/freeipa-client`
+## Known issues and limitations
 
-The FreeBSD client shipped **in the official ports tree does not yet work** —
-it lacks the FreeBSD-specific fixes (getkeytab path, `nsswitch.conf` SSS
-integration, platform paths). Those fixes are pending review in an open
-FreeBSD PR:
+These are **already known**, so please do not file separate reports just for
+them. Extra detail or fixes are of course welcome:
 
-> **Open PR:** [Bug 297487](https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=297487)
-
-Until that PR lands, use the **patched `net/freeipa-client` included in this
-repository** — it is the exact tree from that PR. `freeipa-client` is not
-maintained by the FreeIPA porter; it is included here only to make the CFT
-self-contained.
-
----
-
-## Known issues / limitations
-
-These are **already known** — please don't file separate reports just for
-them (extra detail or fixes are of course welcome):
-
-* **`oddjobd` fails to `onestart`** — the `oddjob-mkhomedir` trigger does not
-  yet work cleanly under the FreeBSD rc system, so a user's home directory
+* **`oddjobd` fails to `onestart`.** The `oddjob-mkhomedir` trigger does not
+  work cleanly under the FreeBSD rc system yet, so a user's home directory
   may not be created automatically on first login.
-* **No DNS records without integrated DNS** — if you install without
-  IPA-managed DNS, the `A` / `PTR` / `SSHFP` records are not created; manage
-  names via `/etc/hosts` or your own DNS server.
-* **`sssctl` needs a running D-Bus** — ensure `dbus_enable=YES`.
-* **`ipa-getkeytab` run by hand** may print a TLS-context error; the
+* **No DNS records without integrated DNS.** If you install without
+  IPA-managed DNS, the `A`, `PTR` and `SSHFP` records are not created.
+  Manage names via `/etc/hosts` or your own DNS server.
+* **`sssctl` needs a running D-Bus**, so make sure `dbus_enable=YES`.
+* **`ipa-getkeytab` run by hand** may print a TLS-context error. The
   enrolment path used by `ipa-client-install` itself works.
-* **gssproxy S4U2 is unreliable on FreeBSD** — the server therefore uses a
-  direct MIT-krb5 S4U2Self path for the HTTP stack **by design**. gssproxy
-  stays installed and enabled for its credential-store role.
+* **gssproxy S4U2 is unreliable on FreeBSD**, so the server uses a direct
+  MIT-krb5 S4U2Self path for the HTTP stack by design. gssproxy stays
+  installed and enabled for its credential-store role.
 
 ---
 
-## How to use this during the CFT
+## Testing is still very welcome
 
-Everything `freeipa-server` depends on is now committed to the FreeBSD ports
-tree, including the ports and changes that were added for FreeIPA
-(`net/389-ds-base`, `security/dogtag-pki`, `net/py-lib389`, `net/slapi-nis`,
-`sysutils/oddjob`, `www/freeipa-auth-gssapi`, and others). What you still
-need from this repository is `net/freeipa-server` itself, which is not in the
-tree yet, plus the patched `net/freeipa-client` (see *Client status* above).
-A current ports tree plus these two ports is all you need.
+The port being in the tree means it builds and installs cleanly, not that
+every code path has been exercised. Reports are still valuable, especially
+for the paths off the beaten track:
 
-The repository mirrors the ports-tree layout (`net/freeipa-server`,
-`net/freeipa-client`), so you can clone it and copy the two directories
-straight into your tree:
-
-```sh
-# 1. clone this repo somewhere temporary
-git clone https://github.com/joneum/FreeBSD-freeipa-server.git /tmp/ipa-cft
-
-# 2. copy the two ports into your ports tree
-#    (/usr/ports, or your own checkout / poudriere ports tree)
-cp -R /tmp/ipa-cft/net/freeipa-server \
-      /tmp/ipa-cft/net/freeipa-client /usr/ports/net/
-
-# 3. register the ports in the tree (see "Tree integration" below):
-#    add "SUBDIR += freeipa-server" to /usr/ports/net/Makefile, and append
-#    the freeipa-server service accounts to the tree's UIDs / GIDs files:
-cat /tmp/ipa-cft/tree-integration/UIDs >> /usr/ports/UIDs
-cat /tmp/ipa-cft/tree-integration/GIDs >> /usr/ports/GIDs
-
-# 4. build + package with poudriere (recommended), with the required option:
-#    security_cyrus-sasl2-gssapi_SET=GSSAPI_MIT
-#    security_cyrus-sasl2-gssapi_UNSET=GSSAPI_BASE
-poudriere testport -j <jail> -p <tree> net/freeipa-server
-poudriere testport -j <jail> -p <tree> net/freeipa-client
-```
-
-### Tree integration (SUBDIR, UIDs, GIDs)
-
-Two things live **outside** the port directories, so copying `net/…` alone
-is not enough. The official ports tree will carry them once `freeipa-server`
-is committed, but for the CFT you add them by hand:
-
-**1. `net/Makefile` SUBDIR entry.** `net/freeipa-client` is already in the
-tree; `net/freeipa-server` is not, so add it (keep the list sorted, right
-after `freeipa-client`):
-
-```make
-SUBDIR += freeipa-server
-```
-
-**2. `UIDs` / `GIDs` service accounts.** `freeipa-server` creates the
-`ipaapi` and `kdcproxy` accounts (`USERS=` / `GROUPS=` in its Makefile);
-their numeric IDs live in the tree-wide `UIDs` and `GIDs` files (reserved
-IDs 598 and 606). This repo ships them under `tree-integration/`:
-
-```
-# UIDs
-ipaapi:*:598:598::0:0:IPA Framework User:/nonexistent:/usr/sbin/nologin
-kdcproxy:*:606:606::0:0:IPA KDC Proxy User:/nonexistent:/usr/sbin/nologin
-
-# GIDs
-ipaapi:*:598:www
-kdcproxy:*:606:
-```
-
-Without these entries the build/package step cannot create the service
-users and fails. (`net/freeipa-client` needs no UIDs/GIDs of its own.)
-
-To pick up a newer revision later, refresh the clone and copy again:
-
-```sh
-git -C /tmp/ipa-cft pull
-cp -R /tmp/ipa-cft/net/freeipa-server \
-      /tmp/ipa-cft/net/freeipa-client /usr/ports/net/
-```
+* All `ipa-server-install` options: self-signed vs. external CA
+  (`--external-ca`), with and without integrated DNS, custom realm/domain
+  combinations, non-default subject base, unattended (`-U`) installs.
+* The full `ipa` command surface: users, groups, hosts, host groups, sudo
+  rules, HBAC, RBAC/roles, certificates and cert profiles, OTP tokens,
+  ID views, ID ranges, password policies, DNS records.
+* Client enrollment, un-enrollment and re-enrollment, plus `id`, `getent`
+  and Kerberos login for IPA users.
+* Replicas and multi-server topologies.
+* Boot persistence (reboot the server, verify the stack comes back up).
+* Uninstall, reinstall and full decommission.
 
 ---
 
 ## Layout
 
 ```
-net/freeipa-server/                  the server port
-net/freeipa-server/files/README.md   full operator + maintainer documentation
-net/freeipa-client/                  the client port (patched, per the open PR)
+net/freeipa-client/    the patched client port, per open PR 297487
+net/freeipa-server/    reference copy of the committed server port
 ```
+
+The server directory is kept as a reference snapshot only. The **official
+ports tree is authoritative**, so install the server from there rather than
+copying this directory over your tree.
 
 ---
 
 ## Support this work
 
-Porting and maintaining FreeIPA on FreeBSD — server, client and the whole
-389-DS / Kerberos / Dogtag / SSSD dependency chain — is a large and ongoing
-effort. If this port is useful to **you or your organization**, please
-consider a donation. It directly supports continued maintenance and future
-FreeBSD identity-management work.
+Porting and maintaining FreeIPA on FreeBSD (server, client and the whole
+389-DS, Kerberos, Dogtag and SSSD dependency chain) is a large and ongoing
+effort, done unpaid alongside a regular job and a family. The hardware the
+test VMs run on is paid for out of pocket as well.
+
+If this port is useful to you or your organization, please consider a
+donation. It directly supports continued maintenance and future FreeBSD
+identity-management work, and it is especially appreciated from companies
+that run FreeBSD and get real value out of ports like this one.
 
 > 💛 **Donate via GitHub Sponsors:** https://github.com/sponsors/joneum
 
@@ -316,8 +259,8 @@ When reporting a failure, please attach as much of the following as applies:
 * `uname -a` and the FreeBSD / `pkg` version
 * the **poudriere build log** (for build failures)
 * `/var/log/ipaserver-install.log` or `/var/log/ipaclient-install.log`
-* `ipactl status` and `/var/log/httpd-error.log` (runtime / Web-UI issues)
-* a `KRB5_TRACE=/dev/stderr <command>` trace for Kerberos / GSSAPI problems
-* the Dogtag / PKI logs under `/var/log/pki/` (CA issues)
+* `ipactl status` and `/var/log/httpd-error.log` (runtime or Web-UI issues)
+* a `KRB5_TRACE=/dev/stderr <command>` trace for Kerberos/GSSAPI problems
+* the Dogtag/PKI logs under `/var/log/pki/` (CA issues)
 
 Thank you for testing!
