@@ -1,8 +1,7 @@
 PORTNAME=	freeipa-server
-DISTVERSION=	4.13.1
-PORTREVISION=	4
+DISTVERSION=	4.13.2
 CATEGORIES=	net
-MASTER_SITES=	https://releases.pagure.org/freeipa/
+MASTER_SITES=	https://codeberg.org/freeipa/freeipa/releases/download/release-${DISTVERSION:S/./-/g}/
 DISTNAME=	freeipa-${DISTVERSION}
 
 MAINTAINER=	joneum@FreeBSD.org
@@ -19,8 +18,7 @@ BUILD_DEPENDS=	${LOCALBASE}/bin/getopt:misc/getopt \
 		${PYTHON_PKGNAMEPREFIX}lesscpy>0:www/py-lesscpy@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}pip>0:devel/py-pip@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}rjsmin>0:archivers/py-rjsmin@${PY_FLAVOR} \
-		bash:shells/bash \
-		samba416>=0:net/samba416
+		bash:shells/bash
 
 LIB_DEPENDS=	libcurl.so:ftp/curl \
 		libini_config.so:devel/ding-libs \
@@ -32,16 +30,16 @@ LIB_DEPENDS=	libcurl.so:ftp/curl \
 		libpwquality.so:security/libpwquality \
 		libsasl2.so:security/cyrus-sasl2 \
 		libsss_nss_idmap.so:security/sssd2 \
-		libtalloc.so:devel/talloc \
-		libtevent.so:devel/tevent \
+		libtalloc.so:${SAMBA_TALLOC_PORT} \
+		libtevent.so:${SAMBA_TEVENT_PORT} \
 		libunistring.so:devel/libunistring \
 		libuuid.so:misc/libuuid \
 		libxmlrpc.so:net/xmlrpc-c
 
 RUN_DEPENDS=	${LOCALBASE}/libexec/apache24/mod_auth_gssapi.so:www/freeipa-auth-gssapi \
-		${LOCALBASE}/sbin/oddjobd:sysutils/oddjob \
 		${LOCALBASE}/libexec/apache24/mod_deflate.so:www/apache24 \
 		${LOCALBASE}/libexec/apache24/mod_expires.so:www/apache24 \
+		${LOCALBASE}/libexec/apache24/mod_lookup_identity.so:www/mod_lookup_identity \
 		${LOCALBASE}/libexec/apache24/mod_proxy.so:www/apache24 \
 		${LOCALBASE}/libexec/apache24/mod_proxy_ajp.so:www/apache24 \
 		${LOCALBASE}/libexec/apache24/mod_proxy_http.so:www/apache24 \
@@ -49,31 +47,31 @@ RUN_DEPENDS=	${LOCALBASE}/libexec/apache24/mod_auth_gssapi.so:www/freeipa-auth-g
 		${LOCALBASE}/libexec/apache24/mod_session.so:www/apache24 \
 		${LOCALBASE}/libexec/apache24/mod_session_cookie.so:www/apache24 \
 		${LOCALBASE}/libexec/apache24/mod_ssl.so:www/apache24 \
-		${LOCALBASE}/libexec/apache24/mod_lookup_identity.so:www/mod_lookup_identity \
 		${LOCALBASE}/libexec/apache24/mod_wsgi.so:www/mod_wsgi@${PY_FLAVOR} \
 		${LOCALBASE}/sbin/certmonger:security/certmonger \
 		${LOCALBASE}/sbin/gssproxy:security/gssproxy \
 		${LOCALBASE}/sbin/httpd:www/apache24 \
+		${LOCALBASE}/sbin/oddjobd:sysutils/oddjob \
 		${PYTHON_PKGNAMEPREFIX}dbus>0:devel/py-dbus@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}gssapi>0:security/py-gssapi@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}ifaddr>0:net/py-ifaddr@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}jwcrypto>0:security/py-jwcrypto@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}kdcproxy>0:security/py-kdcproxy@${PY_FLAVOR} \
+		${PYTHON_PKGNAMEPREFIX}lib389>=0:net/py-lib389@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}netaddr>0:net/py-netaddr@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}python-augeas>0:textproc/py-python-augeas@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}python-dateutil>0:devel/py-python-dateutil@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}qrcode>0:textproc/py-qrcode@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}sqlite3>0:databases/py-sqlite3@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}urllib3>0:net/py-urllib3@${PY_FLAVOR} \
-		${PYTHON_PKGNAMEPREFIX}lib389>=0:net/py-lib389@${PY_FLAVOR} \
 		389-ds-base>=0:net/389-ds-base \
-	slapi-nis>=0.70.0:net/slapi-nis \
 		dogtag-pki>0:security/dogtag-pki \
-		samba416>=0:net/samba416
+		slapi-nis>=0.70.0:net/slapi-nis \
+		sssd2>=2.13.1_2:security/sssd2
 
 USES=		autoreconf gettext-runtime gettext-tools gmake gssapi:mit iconv \
 		ldap libtool localbase:ldflags nodejs:build pkgconfig python \
-		shebangfix ssl
+		samba shebangfix ssl
 
 USE_RC_SUBR=	ipa-custodia freeipa-server
 
@@ -95,12 +93,16 @@ CONFIGURE_ENV=	LIBS="-lintl" \
 
 CFLAGS+=	-D__BSD_VISIBLE=1
 
+CONFLICTS_INSTALL=	freeipa-client
+
 BINARY_ALIAS=	getopt=${LOCALBASE}/bin/getopt
 SUB_FILES=	ipa-otpd-wrapper
 SUB_LIST+=	PYTHON_CMD=${PYTHON_CMD}
 
 USERS=		ipaapi kdcproxy
 GROUPS=		ipaapi kdcproxy
+
+PLIST_SUB=	DISTVERSION=${DISTVERSION}
 
 OPTIONS_DEFINE=	DOCS
 

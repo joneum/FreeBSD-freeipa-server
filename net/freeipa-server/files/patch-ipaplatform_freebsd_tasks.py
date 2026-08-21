@@ -1,5 +1,5 @@
---- ipaplatform/freebsd/tasks.py.orig	2026-08-12 23:00:09.674655000 +0200
-+++ ipaplatform/freebsd/tasks.py	2026-08-12 22:59:44.775251000 +0200
+--- ipaplatform/freebsd/tasks.py.orig	2026-08-17 20:38:02 UTC
++++ ipaplatform/freebsd/tasks.py
 @@ -0,0 +1,251 @@
 +#
 +# Copyright (C) 2026  FreeIPA Contributors see COPYING for license

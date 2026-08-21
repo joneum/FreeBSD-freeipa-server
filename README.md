@@ -7,6 +7,12 @@ stack, combined into a single managed domain.
 > **`net/freeipa-server` is now committed to the official FreeBSD ports
 > tree.** You no longer need this repository to install the server.
 > See [commit 35e4879](https://cgit.freebsd.org/ports/commit/?id=35e48795412e5aba7dcf12b074b5ffa152aed031).
+>
+> The tree is at **4.13.2**. Upgrading an existing server from 4.13.1 needs
+> two manual steps, because they touch the configuration of a deployed
+> pki-tomcat instance that no package may rewrite: repoint the instance at
+> Java 21 and correct its ACME paths. Both are spelled out in the ports
+> `UPDATING` entry dated `20260819`.
 
 The Call For Testing that this repository was created for has served its
 purpose. What remains here:
@@ -129,11 +135,24 @@ hostname ipa.example.com
    enabled, otherwise the UI falls back to form-based login.
 
 6. **On cloud-init images**, stop cloud-init from rewriting `/etc/hosts` on
-   every boot (it would drop the FQDN to real-IP line):
+   every boot. It regenerates the file from a template, which drops the
+   FQDN to real-IP line and maps the host to `127.0.0.1` only. FreeIPA can
+   then no longer resolve its own name, and even `ipactl` aborts with
+   `socket.gaierror: [Errno 8] Name does not resolve`:
 
    ```sh
    printf 'manage_etc_hosts: false\n' \
        > /usr/local/etc/cloud/cloud.cfg.d/99-ipa-no-manage-hosts.cfg
+   ```
+
+   That drop-in only wins when the image's own user-data leaves
+   `manage_etc_hosts` alone. Proxmox, for instance, generates user-data
+   containing `manage_etc_hosts: true`, and user-data outranks everything
+   in `cloud.cfg.d`. Once the host is provisioned, cloud-init has no
+   further job on an IPA server, so take it out of the boot path for good:
+
+   ```sh
+   touch /usr/local/etc/cloud/cloud-init.disabled
    ```
 
 Full operator documentation (service map, uninstall, troubleshooting) ships
@@ -181,13 +200,16 @@ today.
 These are **already known**, so please do not file separate reports just for
 them. Extra detail or fixes are of course welcome:
 
-* **`oddjobd` fails to `onestart`.** The `oddjob-mkhomedir` trigger does not
-  work cleanly under the FreeBSD rc system yet, so a user's home directory
-  may not be created automatically on first login.
+* **`oddjob-mkhomedir` is unverified.** `oddjobd` itself starts and stays up
+  since `ipa-server-install` enables and starts the D-Bus system bus, but
+  automatic creation of home directories on first login has not been
+  tested on FreeBSD.
 * **No DNS records without integrated DNS.** If you install without
   IPA-managed DNS, the `A`, `PTR` and `SSHFP` records are not created.
   Manage names via `/etc/hosts` or your own DNS server.
-* **`sssctl` needs a running D-Bus**, so make sure `dbus_enable=YES`.
+* **`sssctl` needs a running D-Bus.** `ipa-server-install` sets
+  `dbus_enable=YES` and starts the bus itself, so this only bites on hosts
+  where the bus was disabled again afterwards.
 * **`ipa-getkeytab` run by hand** may print a TLS-context error. The
   enrolment path used by `ipa-client-install` itself works.
 * **gssproxy S4U2 is unreliable on FreeBSD**, so the server uses a direct

@@ -57,6 +57,33 @@ Postfix, ...) then use the ports MIT Kerberos — the correct, consistent
 setup on a host dedicated to FreeIPA. The plugin is loaded at runtime via
 `dlopen`, so those consumers do **not** need rebuilding.
 
+### Python GSSAPI bindings — same Kerberos, same reason
+
+`security/py-gssapi` (the `pyXX-gssapi` package) has the **same** default
+pitfall and must be fixed the same way. It defaults to `GSSAPI_BASE`, building
+against the base-system Kerberos. FreeIPA's own tooling uses these Python
+bindings for the Kerberos step of the self-enrolment (`ipalib` calls `kinit`);
+with the base Kerberos it cannot find the KDC and the install fails at the very
+end with `Cannot find KDC for realm "..."`.
+
+**Fix:** build `security/py-gssapi` with **`GSSAPI_MIT`** too:
+
+```sh
+# make.conf (ports / poudriere):
+security_py-gssapi_SET=GSSAPI_MIT
+security_py-gssapi_UNSET=GSSAPI_BASE
+
+# or interactively:
+make -C /usr/ports/security/py-gssapi config   # select GSSAPI_MIT
+```
+
+Verify (must show the ports Kerberos, **not** `/usr/lib/...`):
+
+```sh
+ldd /usr/local/lib/python3*/site-packages/gssapi/raw/misc*.so | grep libgssapi_krb5
+# -> /usr/local/lib/libgssapi_krb5.so
+```
+
 ---
 
 FreeIPA is very sensitive to host naming. **Before** running

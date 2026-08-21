@@ -1,6 +1,6 @@
---- ipapython/ipaldap.py.orig	2026-08-12 22:45:24.220125000 +0200
-+++ ipapython/ipaldap.py	2026-08-12 22:44:46.242011000 +0200
-@@ -1271,6 +1271,23 @@
+--- ipapython/ipaldap.py.orig	2026-01-16 09:23:32 UTC
++++ ipapython/ipaldap.py
+@@ -1271,6 +1271,23 @@ class LDAPClient:
              else:
                  auth_tokens = SASL_GSSAPI
              self._flush_schema()
