@@ -223,6 +223,8 @@
 +    SBIN_INETD = "/usr/sbin/inetd"
 +    SBIN_SERVICE = "/usr/sbin/service"
 +    SBIN_SYSRC = "/usr/sbin/sysrc"
++    CHRONYC = "/usr/local/bin/chronyc"
++    CHRONYD = "/usr/local/sbin/chonyd"
 +
 +
 +paths = FreeBSDPathNamespace()

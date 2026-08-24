@@ -27,6 +27,7 @@ LIB_DEPENDS=	libcmocka.so:sysutils/cmocka \
 		libxmlrpc.so:net/xmlrpc-c
 
 RUN_DEPENDS=	${LOCALBASE}/sbin/certmonger:security/certmonger \
+		${LOCALBASE}/bin/chronyc:net/chrony \
 		${PYTHON_PKGNAMEPREFIX}cffi>0:devel/py-cffi@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}cryptography>0:security/py-cryptography@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}dbus>0:devel/py-dbus@${PY_FLAVOR} \

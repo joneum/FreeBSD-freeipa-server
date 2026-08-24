@@ -52,7 +52,12 @@
      MODUTIL = "/usr/bin/modutil"
      NET = "/usr/bin/net"
      BIN_NISDOMAINNAME = "/usr/bin/nisdomainname"
-@@ -283,6 +283,7 @@ class BasePathNamespace:
+@@ -278,11 +278,10 @@ class BasePathNamespace:
+     IPA_REPLICA_CONNCHECK = "/usr/sbin/ipa-replica-conncheck"
+     IPA_RMKEYTAB = "/usr/sbin/ipa-rmkeytab"
+     IPACTL = "/usr/sbin/ipactl"
+-    CHRONYC = "/usr/bin/chronyc"
+-    CHRONYD = "/usr/sbin/chronyd"
      PKIDESTROY = "/usr/sbin/pkidestroy"
      PKISPAWN = "/usr/sbin/pkispawn"
      PKI = "/usr/bin/pki"
