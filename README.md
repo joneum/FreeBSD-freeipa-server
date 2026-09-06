@@ -210,8 +210,6 @@ them. Extra detail or fixes are of course welcome:
 * **`sssctl` needs a running D-Bus.** `ipa-server-install` sets
   `dbus_enable=YES` and starts the bus itself, so this only bites on hosts
   where the bus was disabled again afterwards.
-* **`ipa-getkeytab` run by hand** may print a TLS-context error. The
-  enrolment path used by `ipa-client-install` itself works.
 * **gssproxy S4U2 is unreliable on FreeBSD**, so the server uses a direct
   MIT-krb5 S4U2Self path for the HTTP stack by design. gssproxy stays
   installed and enabled for its credential-store role.
