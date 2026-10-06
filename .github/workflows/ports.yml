@@ -1,0 +1,61 @@
+name: Port files
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Monday morning, so a file that went missing shows up here and not
+    # when the port is next touched
+    - cron: '31 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ports:
+    name: every port directory
+    runs-on: ubuntu-latest
+    # portlint would be the thorough answer, but it runs make(1) over the
+    # port and that needs the whole ports infrastructure, which is a tree
+    # to clone on every run.  This checks what actually goes wrong here.
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the port directories
+        run: ci/check-ports.sh
+
+  lint:
+    name: shell scripts and workflows
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends shellcheck
+
+      - name: Check every script under ci/
+        run: |
+          files=$(find ci -name '*.sh' 2>/dev/null | sort)
+          if [ -z "$files" ]; then
+            echo "no scripts to check"
+            exit 0
+          fi
+          echo "$files"
+          # shellcheck disable=SC2086
+          shellcheck --severity=warning --shell=sh $files
+
+      - name: Run actionlint
+        env:
+          ACTIONLINT_VERSION: 1.7.7
+        run: |
+          url=https://github.com/rhysd/actionlint/releases/download
+          curl -sSfL -o actionlint.tar.gz \
+            "$url/v$ACTIONLINT_VERSION/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          tar xzf actionlint.tar.gz actionlint
+          ./actionlint -color
