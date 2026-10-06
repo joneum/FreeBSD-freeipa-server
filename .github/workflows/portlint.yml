@@ -33,13 +33,15 @@ jobs:
             fail=0
             for descr in $(find . -name pkg-descr | sort); do
               d=$(dirname "$descr")
-              out=$(cd "$d" && portlint -A 2>&1)
+              # portlint returns non-zero as soon as it has anything to
+              # say at all, and this block runs under set -e
+              out=$(cd "$d" && portlint -A 2>&1) || true
               line=$(printf '%s\n' "$out" | tail -1)
               fatal=$(printf '%s\n' "$line" | sed -n 's/^\([0-9][0-9]*\) fatal error.*/\1/p')
               warn=$(printf '%s\n' "$line" | sed -n 's/.*and \([0-9][0-9]*\) warning.*/\1/p')
               printf '%s: %s fatal, %s warnings\n' "${d#./}" "${fatal:-?}" "${warn:-?}"
               if [ "${fatal:-1}" != 0 ]; then
-                printf '%s\n' "$out" | grep '^FATAL'
+                printf '%s\n' "$out" | grep '^FATAL' || true
                 fail=1
               fi
             done
