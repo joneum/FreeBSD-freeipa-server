@@ -1,5 +1,10 @@
 # FreeIPA on FreeBSD
 
+[![Portlint][portlint-badge]][portlint-link]
+
+[portlint-badge]: https://github.com/joneum/FreeBSD-freeipa-server/actions/workflows/portlint.yml/badge.svg
+[portlint-link]: https://github.com/joneum/FreeBSD-freeipa-server/actions/workflows/portlint.yml
+
 FreeIPA is integrated identity management: 389 Directory Server (LDAP), an
 MIT Kerberos KDC, Dogtag PKI (CA) and an Apache/mod_wsgi administration
 stack, combined into a single domain.

@@ -1,0 +1,50 @@
+name: Portlint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Monday morning, so a change in portlint's rules shows up here and
+    # not when the port is next committed
+    - cron: '31 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portlint:
+    name: every port directory
+    runs-on: ubuntu-latest
+    # these are FreeBSD ports, so the tool that judges them runs there
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run portlint over every port in the repository
+        uses: vmactions/freebsd-vm@v1.5.9
+        with:
+          release: '14'
+          prepare: |
+            pkg install -y portlint
+          run: |
+            # a port directory is one that carries a pkg-descr
+            fail=0
+            for descr in $(find . -name pkg-descr | sort); do
+              d=$(dirname "$descr")
+              out=$(cd "$d" && portlint -A 2>&1)
+              line=$(printf '%s\n' "$out" | tail -1)
+              fatal=$(printf '%s\n' "$line" | sed -n 's/^\([0-9][0-9]*\) fatal error.*/\1/p')
+              warn=$(printf '%s\n' "$line" | sed -n 's/.*and \([0-9][0-9]*\) warning.*/\1/p')
+              printf '%s: %s fatal, %s warnings\n' "${d#./}" "${fatal:-?}" "${warn:-?}"
+              if [ "${fatal:-1}" != 0 ]; then
+                printf '%s\n' "$out" | grep '^FATAL'
+                fail=1
+              fi
+            done
+
+            # a warning is style that was weighed when the port was
+            # committed; a fatal error is a port that does not hold
+            # together, and that is what this gate is for
+            [ "$fail" -eq 0 ]
